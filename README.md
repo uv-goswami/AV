@@ -1,6 +1,7 @@
 # AV: AI-Driven SEO & Optimization for AI Visibility
 
 **Live Deployment (AWS):** [aivault-frontend-portfolio.s3-website.ap-south-1.amazonaws.com](http://aivault-frontend-portfolio.s3-website.ap-south-1.amazonaws.com/)
+
 **Live Deployment (Render):** [https://aivault-frontend.onrender.com](https://www.google.com/search?q=https://aivault-frontend.onrender.com)
 
 In the current digital landscape, being discoverable by humans is only half the battle. Modern search is increasingly dominated by AI agents, LLMs, and automated crawlers. AiVault is a full-stack engineering solution designed to bridge this gap. It enables local businesses to manage their digital identity in a way that is natively "readable" by both AI bots and human customers, utilizing automated structured data generation and deep visibility auditing.
