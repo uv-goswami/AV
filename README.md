@@ -95,7 +95,6 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 # Configure .env with your GEMINI_API_KEY
 fastapi dev main.py
-
 ```
 
 ### 3. Frontend Setup
