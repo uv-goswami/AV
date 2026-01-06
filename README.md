@@ -84,7 +84,7 @@ cd AV
 
 ### 2. Backend Setup
 
-** Set Virtual Environment **
+**Set Virtual Environment**
 ```bash
 cd backend
 python -m venv venv
@@ -94,7 +94,7 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 pip install -r requirements.txt
 # Configure .env with your GEMINI_API_KEY
-uvicorn main:app --reload
+fastapi dev main.py
 
 ```
 
