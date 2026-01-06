@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event, DDL
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 from dotenv import load_dotenv
@@ -14,13 +14,25 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 # and translates Python code into database-specific SQL commands.
 engine = create_engine(DATABASE_URL)
 
+# Create a base class for all database models to inherit from
+# This allows SQLAlchemy to map Python classes to database tables
+Base = declarative_base()
+
+# AUTOMATION: ENABLE CITEXT EXTENSION 
+# We use SQLAlchemy's DDL (Data Definition Language) system to ensure 
+# the extension is created before the tables are.
+# "IF NOT EXISTS" prevents errors on subsequent runs.
+event.listen(
+    Base.metadata,
+    "before_create",
+    DDL("CREATE EXTENSION IF NOT EXISTS citext").execute_if(dialect="postgresql")
+)
+
 # Configure the session factory. 
 # autocommit=False ensures transactions are explicitly controlled for data integrity.
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
-# Create a base class for all database models to inherit from
-# This allows SQLAlchemy to map Python classes to database tables
-Base = declarative_base()
+
 
 def get_db():
     """

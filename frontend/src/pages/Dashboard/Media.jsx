@@ -1,36 +1,37 @@
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import SidebarNav from '../../components/SidebarNav'
-// ✅ Centralized API helpers for consistent media operations and caching
+// ✅ Centralized client utilities for consistent media operations and caching
 import { listMedia, uploadMediaFile, deleteMedia, API_BASE, getFromCache } from '../../api/client'
 import '../../styles/dashboard.css'
 
 /**
  * Media Management Component
- * * Handles the lifecycle of business assets including images, videos, and documents.
- * Features automatic file-type detection, size validation, and cache-first rendering.
+ * Handles the lifecycle of business assets including images, videos, and documents.
+ * Employs a cache-first rendering strategy to ensure the UI is instantly 
+ * interactive while fresh data is synchronized in the background.
  */
 export default function Media() {
   const { id } = useParams()
   
   /**
-   * Performance: Instant UI Loading
-   * Retrieves previously fetched media assets from the global cache to 
-   * eliminate loading flickers for returning users.
+   * Performance Strategy: Instant Hydration
+   * Initializes state by checking the memory cache. This allows the user to see 
+   * their previously uploaded assets immediately (0ms latency).
    */
   const [media, setMedia] = useState(() => {
     const cached = getFromCache(`/media/?business_id=${id}&limit=100&offset=0`)
     return Array.isArray(cached) ? cached : []
   })
 
-  // State for managing the upload form and binary file data
   const [form, setForm] = useState({ media_type: null, file: null })
   const [showForm, setShowForm] = useState(false)
   const [error, setError] = useState(null)
 
   /**
-   * Revalidation Hook: Background Synchronization
-   * Ensures the UI reflects the most recent assets stored on the server.
+   * Data Revalidation: Background Sync
+   * Effectively the 'Refresh' part of the SWR pattern. Once the component mounts,
+   * we fire a background request to ensure the cached media list matches the server.
    */
   useEffect(() => {
     loadMedia()
@@ -41,7 +42,7 @@ export default function Media() {
       const data = await listMedia(id, 100, 0)
       setMedia(data)
     } catch (err) {
-      console.error("Media sync error:", err)
+      console.error("Media synchronization error:", err)
     }
   }
 
@@ -68,29 +69,33 @@ export default function Media() {
       setError(null)
       loadMedia() // Refresh the media gallery
     } catch (err) {
-      console.error(err)
-      setError('Upload failed. Please check file type and network connection.')
+      console.error("Upload failure:", err)
+      setError('Upload failed. Please check file type and size.')
     }
   }
 
+  /**
+   * handleDelete
+   * Removes the asset from the cloud storage and database via the API client.
+   */
   async function handleDelete(assetId) {
     try {
       await deleteMedia(assetId)
       loadMedia()
     } catch (err) {
-      console.error("Deletion failed:", err)
+      console.error("Deletion failure:", err)
     }
   }
 
   /**
    * detectMediaType
    * Helper utility to classify files based on extensions.
-   * This simplifies the UI by removing the need for users to manually select a category.
+   * This improves UX by removing the need for users to manually select a category.
    */
   function detectMediaType(file) {
     if (!file) return null
     const ext = file.name.split('.').pop().toLowerCase()
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return 'image'
+    if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) return 'image'
     if (['mp4', 'mov', 'avi', 'mkv'].includes(ext)) return 'video'
     if (['pdf', 'doc', 'docx', 'txt'].includes(ext)) return 'document'
     return null
@@ -104,68 +109,64 @@ export default function Media() {
       <div className="dashboard-content">
         <h2 className="page-title">Media Assets</h2>
 
-        {/* User Feedback: Display validation or network errors */}
-        {error && <p className="error-message">{error}</p>}
+        {error && <p className="error">{error}</p>}
 
-        <div className="media-gallery">
-          {media.length === 0 ? (
-            <p className="placeholder-text">No media uploaded yet.</p>
-          ) : (
-            media.map(m => (
-              <div key={m.asset_id} className="panel media-card">
-                <p className="meta-label"><strong>Type:</strong> {m.media_type.toUpperCase()}</p>
-
-                {/* Polymorphic Rendering: Display the asset based on its content type */}
-                {m.media_type === 'image' && (
-                  <img
-                    src={`${API_BASE}${m.url}`}
-                    alt="Business Asset"
-                    className="preview-image"
-                    loading="lazy"
-                  />
-                )}
-                
-                {m.media_type === 'video' && (
-                  <video controls className="preview-video">
-                    <source src={`${API_BASE}${m.url}`} type="video/mp4" />
-                    Your browser does not support the video tag.
-                  </video>
-                )}
-                
-                {m.media_type === 'document' && (
-                  <div className="document-link">
-                    <a href={`${API_BASE}${m.url}`} target="_blank" rel="noopener noreferrer">
-                      📄 View Document
-                    </a>
-                  </div>
-                )}
-
-                <button className="ghost delete-btn" onClick={() => handleDelete(m.asset_id)}>
-                  Delete Asset
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Toggleable Upload Interface */}
-        {!showForm ? (
-          <button className="ghost" onClick={() => setShowForm(true)}>+ Upload New Media</button>
+        {media.length === 0 ? (
+          <p>No media uploaded.</p>
         ) : (
-          <div className="form-section panel">
+          media.map(m => (
+            <div key={m.asset_id} className="panel">
+              <p><strong>Type:</strong> {m.media_type}</p>
+
+              {/* Polymorphic Rendering: Display the asset based on its content type */}
+              {m.media_type === 'image' && (
+                <img
+                  src={`${API_BASE}${m.url}`}
+                  alt="Uploaded"
+                  style={{ maxWidth: '100%', height: 'auto' }}
+                />
+              )}
+              {m.media_type === 'video' && (
+                <video controls style={{ maxWidth: '100%' }}>
+                  <source src={`${API_BASE}${m.url}`} type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+              )}
+              {m.media_type === 'document' && (
+                <p>
+                  <strong>Document:</strong>{' '}
+                  <a
+                    href={`${API_BASE}${m.url}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    View file
+                  </a>
+                </p>
+              )}
+
+              <button className="ghost" onClick={() => handleDelete(m.asset_id)}>Delete</button>
+            </div>
+          ))
+        )}
+
+        {/* Conditional Form Rendering for a clean, action-oriented UI */}
+        {!showForm ? (
+          <button className="ghost" onClick={() => setShowForm(true)}>Upload Media</button>
+        ) : (
+          <div className="form-section">
             <div className="form-header">
-              <h3 className="form-title">Upload Asset</h3>
-              <p className="form-desc">Select an image, video, or document (max 50 MB)</p>
+              <h3 className="form-title">Upload Media</h3>
+              <p className="form-desc">Choose a file from your device (max 50 MB)</p>
             </div>
             <div className="form-body">
               <input
                 type="file"
-                className="file-input"
                 onChange={e => {
                   const file = e.target.files[0]
                   const type = detectMediaType(file)
-                  if (!type && file) {
-                    setError('Unsupported file format.')
+                  if (!type) {
+                    setError('Unsupported file type. Only images, videos, and documents are allowed.')
                     setForm({ media_type: null, file: null })
                   } else {
                     setError(null)
@@ -173,10 +174,8 @@ export default function Media() {
                   }
                 }}
               />
-              <div className="btn-group">
-                <button onClick={handleUpload} disabled={!form.file}>Start Upload</button>
-                <button className="ghost" onClick={() => setShowForm(false)}>Cancel</button>
-              </div>
+              <button onClick={handleUpload}>Upload</button>
+              <button onClick={() => setShowForm(false)}>Cancel</button>
             </div>
           </div>
         )}

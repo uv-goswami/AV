@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import SidebarNav from '../../components/SidebarNav'
 import '../../styles/dashboard.css'
-// ✅ Leveraging a centralized API client for consistent data management
+// ✅ Centralized API client for business operations and high-performance cache access
 import { 
   API_BASE, 
   getFromCache, 
@@ -11,24 +11,26 @@ import {
 } from '../../api/client'
 
 /**
- * Coupons Management Page
- * Handles the creation, listing, and modification of business promotional offers.
- * Features an 'Instant-Load' strategy using local caching to improve perceived performance.
+ * Coupons Management Component
+ * * Logic: Handles the lifecycle of promotional offers and discounts.
+ * * UX Strategy: Employs a 'Cache-First' strategy to eliminate perceived latency 
+ * while maintaining a background sync to ensure data integrity.
  */
 export default function Coupons() {
-  const { id } = useParams() // The business UUID from the route
+  const { id } = useParams()
   
   /**
-   * Performance Strategy: Instant Load
-   * We initialize state by checking the cache first. This allows the UI to 
-   * render immediately with "stale" data while a fresh fetch runs in the background.
+   * Performance Strategy: Instant UI Hydration
+   * Initializes local state by synchronously reading from the application cache.
+   * This ensures returning users see their data immediately (0ms delay).
    */
   const [coupons, setCoupons] = useState(() => {
+    // Exact match for the URL used in the API client to ensure cache-hit consistency
     const cached = getFromCache(`/coupons/?business_id=${id}&limit=20&offset=0`)
     return Array.isArray(cached) ? cached : []
   })
   
-  // Local state for handling form inputs during create/edit actions
+  // Local form state for coupon creation and inline editing
   const [form, setForm] = useState({
     code: '',
     description: '',
@@ -38,12 +40,12 @@ export default function Coupons() {
     terms_conditions: ''
   })
   
-  const [editing, setEditing] = useState(null) // Tracks the ID of the coupon being edited
+  const [editing, setEditing] = useState(null)
   const [showForm, setShowForm] = useState(false)
 
   /**
-   * Lifecycle Management: Revalidation
-   * Fetches fresh data whenever the business ID changes or the component mounts.
+   * Background Revalidation:
+   * Fires post-render to ensure the UI is eventually consistent with the server.
    */
   useEffect(() => {
     loadCoupons()
@@ -51,21 +53,29 @@ export default function Coupons() {
 
   async function loadCoupons() {
     try {
-      // client helper automatically updates the cache and returns fresh data
+      // Re-fetches fresh data and updates the global cache via the client helper
       const data = await listCoupons(id, 20, 0)
       setCoupons(data)
     } catch (err) {
-      console.error("Failed to sync coupons:", err)
+      console.error("Coupons synchronization failed:", err)
     }
   }
 
-  // Formatting utility to ensure ISO strings from the DB work with HTML5 date inputs
+  /**
+   * formatDateForInput
+   * Data Normalization utility to transform ISO-8601 strings from the DB 
+   * into the 'YYYY-MM-DD' format required by standard HTML5 date inputs.
+   */
   const formatDateForInput = (dateString) => {
     if (!dateString) return ''
     return dateString.split('T')[0] 
   }
 
-  // Data Sanitization: Ensures optional empty fields are sent as 'null' to the API
+  /**
+   * getCleanPayload
+   * Ensures data integrity by sanitizing empty strings into 'null' values, 
+   * adhering to the backend's optional field schema.
+   */
   const getCleanPayload = (formData) => {
     return {
       code: formData.code,
@@ -79,26 +89,27 @@ export default function Coupons() {
 
   /**
    * handleCreate
-   * Submits a new coupon to the backend and triggers a background refresh.
+   * Triggers the API client to persist a new coupon. 
+   * Note: The client automatically invalidates stale caches on POST.
    */
   async function handleCreate() {
     try {
       const payload = getCleanPayload(form)
       await createCoupon({ business_id: id, ...payload })
 
-      // Reset form UI upon success
       setForm({ code: '', description: '', discount_value: '', valid_from: '', valid_until: '', terms_conditions: '' })
       setShowForm(false)
       loadCoupons()
     } catch (err) {
       console.error(err)
-      alert("Network error: Could not create coupon")
+      alert("Network error occurred")
     }
   }
 
   /**
    * handleUpdate
-   * Performs a partial update (PATCH) and manually refreshes state.
+   * Implements inline editing logic. Uses a raw fetch here to target 
+   * specific resource IDs and refreshes the local state upon success.
    */
   async function handleUpdate(couponId) {
     try {
@@ -118,23 +129,29 @@ export default function Coupons() {
       }
 
       setEditing(null)
+      setForm({ code: '', description: '', discount_value: '', valid_from: '', valid_until: '', terms_conditions: '' })
+      
+      // Manual reload to force cache synchronization after a PATCH operation
       loadCoupons() 
     } catch (err) {
       console.error(err)
+      alert("Network error occurred")
     }
   }
 
   /**
    * handleDelete
-   * Implements an 'Optimistic UI' update by removing the item from local state 
-   * immediately while the network request executes.
+   * Implements an 'Optimistic UI' pattern by removing the item from local state 
+   * immediately, ensuring the interface feels responsive to the user.
    */
   async function handleDelete(couponId) {
     try {
       await fetch(`${API_BASE}/coupons/${couponId}`, { method: 'DELETE' })
+      
+      // Filter state locally to provide immediate visual feedback
       setCoupons(prev => prev.filter(c => c.coupon_id !== couponId))
     } catch (err) {
-      console.error("Delete failed:", err)
+      console.error("Deletion failed:", err)
     }
   }
 
@@ -144,55 +161,58 @@ export default function Coupons() {
         <SidebarNav />
       </div>
       <div className="dashboard-content">
-        <h2 className="page-title">Coupons</h2>
+        <h2 className="page-title">Manage Business Coupons</h2>
 
+        {/* --- COUPON LISTING AREA --- */}
         <div className="collapsible-section">
           {coupons.length === 0 ? (
-            <p className="placeholder-text">No active coupons available.</p>
+            <p className="placeholder-text">No active coupons found. Create one to drive engagement.</p>
           ) : (
             coupons.map(c => (
-              <div key={c.coupon_id} className="panel">
+              <div key={c.coupon_id} className="panel coupon-card">
                 {editing === c.coupon_id ? (
-                  /* --- Inline Edit Mode --- */
-                  <div className="form-body">
-                    <input value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} placeholder="Code" />
-                    <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Description" />
+                  /* --- INLINE EDIT FORM --- */
+                  <div className="edit-mode">
+                    <input value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} placeholder="Promo Code" />
+                    <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Offer Description" />
                     <input value={form.discount_value} onChange={e => setForm({ ...form, discount_value: e.target.value })} placeholder="Discount Value" />
                     
-                    <label className="label-small">Valid From:</label>
+                    <label className="input-label">Validity Start:</label>
                     <input type="date" value={form.valid_from} onChange={e => setForm({ ...form, valid_from: e.target.value })} />
                     
-                    <label className="label-small">Valid Until:</label>
+                    <label className="input-label">Validity End:</label>
                     <input type="date" value={form.valid_until} onChange={e => setForm({ ...form, valid_until: e.target.value })} />
                     
-                    <textarea value={form.terms_conditions} onChange={e => setForm({ ...form, terms_conditions: e.target.value })} placeholder="Terms & Conditions" />
+                    <textarea value={form.terms_conditions} onChange={e => setForm({ ...form, terms_conditions: e.target.value })} placeholder="Legal Terms & Conditions" />
                     
-                    <div className="btn-group">
-                        <button onClick={() => handleUpdate(c.coupon_id)}>Save Changes</button>
+                    <div className="btn-group-mt">
+                        <button onClick={() => handleUpdate(c.coupon_id)}>Save Snapshot</button>
                         <button className="ghost" onClick={() => setEditing(null)}>Cancel</button>
                     </div>
                   </div>
                 ) : (
-                  /* --- View Mode --- */
+                  /* --- VIEW MODE --- */
                   <div className="view-mode">
-                    <strong>{c.code}</strong>
+                    <strong>Code: {c.code}</strong>
                     <p>{c.description}</p>
-                    <p className="accent-text">Discount: {c.discount_value}</p>
-                    <p className="meta-text">Valid: {formatDateForInput(c.valid_from)} → {formatDateForInput(c.valid_until)}</p>
+                    <p className="accent-text">Value: {c.discount_value}</p>
                     
-                    <div className="btn-group">
-                      <button onClick={() => {
-                        setEditing(c.coupon_id)
-                        setForm({
-                          code: c.code,
-                          description: c.description || '',
-                          discount_value: c.discount_value || '',
-                          valid_from: formatDateForInput(c.valid_from),
-                          valid_until: formatDateForInput(c.valid_until),
-                          terms_conditions: c.terms_conditions || ''
-                        })
-                      }}>Edit</button>
-                      <button className="ghost" onClick={() => handleDelete(c.coupon_id)}>Delete</button>
+                    <p className="meta-text">Timeline: {formatDateForInput(c.valid_from)} — {formatDateForInput(c.valid_until)}</p>
+                    <p className="terms-text">{c.terms_conditions}</p>
+                    
+                    <div className="btn-group-mt">
+                        <button onClick={() => {
+                          setEditing(c.coupon_id)
+                          setForm({
+                            code: c.code,
+                            description: c.description || '',
+                            discount_value: c.discount_value || '',
+                            valid_from: formatDateForInput(c.valid_from),
+                            valid_until: formatDateForInput(c.valid_until),
+                            terms_conditions: c.terms_conditions || ''
+                          })
+                        }}>Edit Offer</button>
+                        <button className="ghost" onClick={() => handleDelete(c.coupon_id)}>Remove</button>
                     </div>
                   </div>
                 )}
@@ -201,28 +221,28 @@ export default function Coupons() {
           )}
         </div>
 
-        {/* --- Create New Coupon Trigger --- */}
+        {/* --- CREATION INTERFACE --- */}
         {!showForm ? (
           <button className="ghost" onClick={() => setShowForm(true)}>+ Add New Coupon</button>
         ) : (
-          <div className="collapsible-section">
-            <h3 className="form-title">Create Promotional Offer</h3>
+          <div className="collapsible-section panel">
+            <h3 className="form-title">Launch New Coupon</h3>
             <div className="form-body">
-              <input placeholder="Code (e.g. SUMMER25)" value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} />
-              <textarea placeholder="Description of the offer" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-              <input placeholder="Discount Value (e.g. 20% off)" value={form.discount_value} onChange={e => setForm({ ...form, discount_value: e.target.value })} />
+              <input placeholder="Promo Code (e.g. SUMMER25)" value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} />
+              <textarea placeholder="Discount details..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+              <input placeholder="Discount (e.g. 20% OFF)" value={form.discount_value} onChange={e => setForm({ ...form, discount_value: e.target.value })} />
               
-              <label className="label-small">Valid From:</label>
+              <label className="input-label">Start Date:</label>
               <input type="date" value={form.valid_from} onChange={e => setForm({ ...form, valid_from: e.target.value })} />
               
-              <label className="label-small">Valid Until:</label>
+              <label className="input-label">End Date:</label>
               <input type="date" value={form.valid_until} onChange={e => setForm({ ...form, valid_until: e.target.value })} />
               
-              <textarea placeholder="Terms & Conditions" value={form.terms_conditions} onChange={e => setForm({ ...form, terms_conditions: e.target.value })} />
+              <textarea placeholder="Fine print / Terms..." value={form.terms_conditions} onChange={e => setForm({ ...form, terms_conditions: e.target.value })} />
               
-              <div className="btn-group">
+              <div className="btn-group-mt">
                   <button onClick={handleCreate}>Publish Coupon</button>
-                  <button className="ghost" onClick={() => setShowForm(false)}>Cancel</button>
+                  <button className="ghost" onClick={() => setShowForm(false)}>Discard</button>
               </div>
             </div>
           </div>
@@ -230,4 +250,4 @@ export default function Coupons() {
       </div>
     </div>
   )
-}
+} 
