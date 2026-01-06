@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, Navigate } from 'react-router-dom'
-// ✅ Import getFromCache
+// ✅ Centralized client utilities for resource-specific data fetching and caching
 import { getBusiness, listServices, listMedia, getFromCache } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import SidebarNav from '../components/SidebarNav'
@@ -9,11 +9,24 @@ import JsonBlock from '../components/JsonBlock'
 import CollapsibleSection from '../components/CollapsibleSection'
 import '../styles/dashboard.css'
 
+/**
+ * Dashboard Main Component
+ * * Acts as the primary command center for authenticated business owners.
+ * Responsibilities include:
+ * 1. Enforcing Route Protection (Authorization check).
+ * 2. Implementing the Stale-While-Revalidate pattern for multiple data streams.
+ * 3. Orchestrating UI components (Stats, Sidebar, and Collapsible data views).
+ */
 export default function Dashboard() {
-  const { id } = useParams()
-  const { userId } = useAuth()
+  const { id } = useParams() // Business UUID from the URL
+  const { userId } = useAuth() // Global authentication status
 
-  // 🚀 INSTANT LOAD: Synchronous Cache Reading
+  /**
+   * Performance: Synchronous State Initialization
+   * We leverage the getFromCache helper to populate the initial state instantly.
+   * This ensures the user sees their data immediately (0ms latency) without 
+   * a white screen or a global loading spinner.
+   */
   const [business, setBusiness] = useState(() => {
     return getFromCache(`/business/${id}`) || null
   })
@@ -26,98 +39,108 @@ export default function Dashboard() {
     return getFromCache(`/media/?business_id=${id}&limit=100&offset=0`) || []
   })
 
-  // 🚀 BACKGROUND UPDATE
+  /**
+   * Lifecycle Hook: Background Synchronization
+   * This effect runs post-render to ensure that even though we showed 
+   * cached data, we are currently fetching the most up-to-date values 
+   * from the backend API.
+   */
   useEffect(() => {
     if (userId) {
-      getBusiness(id).then(setBusiness).catch(() => {})
-      listServices(id, 100, 0).then(setServices).catch(() => {})
-      listMedia(id, 100, 0).then(setMedia).catch(() => {})
+      // Parallel revalidation of all dashboard-level resources
+      getBusiness(id).then(setBusiness).catch((err) => console.error("Biz Sync Error:", err))
+      listServices(id, 100, 0).then(setServices).catch((err) => console.error("Service Sync Error:", err))
+      listMedia(id, 100, 0).then(setMedia).catch((err) => console.error("Media Sync Error:", err))
     }
   }, [id, userId])
 
+  /**
+   * Authorization Guard:
+   * Professional implementation of a Protected Route. If the context 
+   * indicates no active session, we perform a clean redirect to login.
+   */
   if (!userId) {
     return <Navigate to="/login" replace />
   }
 
   return (
     <div className="dashboard-page">
+      {/* Global Navigation Shell */}
       <SidebarNav />
+
       <div className="dashboard-content container">
         <h2 className="page-title">Dashboard Overview</h2>
 
-        {/* Stats */}
+        {/* Top-Level Metrics: Using reusable StatCard components for UI consistency */}
         <div className="grid">
           <StatCard title="Profile" value={business ? '✓' : '—'} />
           <StatCard title="Services" value={services.length} />
           <StatCard title="Media Assets" value={media.length} />
         </div>
 
-        {/* Collapsible sections */}
-        <CollapsibleSection title="Profile">
+        {/* Data Management Sections: 
+            Utilizes the CollapsibleSection pattern to keep a complex UI 
+            organized and manageable for the end user. 
+        */}
+        
+        <CollapsibleSection title="Profile Overview">
           {business ? (
-            <div>
+            <div className="profile-details">
               <p><strong>Name:</strong> {business.name}</p>
               <p><strong>Description:</strong> {business.description || '—'}</p>
-              <p><strong>Type:</strong> {business.business_type || 'LocalBusiness'}</p>
-              <p><strong>Phone:</strong> {business.phone || '—'}</p>
-              <p><strong>Website:</strong> {business.website || '—'}</p>
-              <p><strong>Address:</strong> {business.address || '—'}</p>
-              {/* TODO: Add edit form bound to PATCH /business/:id */}
+              <p><strong>Category:</strong> {business.business_type || 'LocalBusiness'}</p>
+              <p><strong>Contact:</strong> {business.phone || '—'}</p>
+              <p><strong>Link:</strong> {business.website || '—'}</p>
+              <p><strong>Location:</strong> {business.address || '—'}</p>
             </div>
           ) : (
-            <p>No business profile found.</p>
+            <p className="placeholder-text">Business profile data is synchronizing...</p>
           )}
         </CollapsibleSection>
 
-        <CollapsibleSection title="Services">
+        <CollapsibleSection title="Services Catalog">
           {services.length === 0 ? (
-            <p>No services listed.</p>
+            <p className="placeholder-text">No services listed yet.</p>
           ) : (
             services.map(s => (
-              <div key={s.service_id} className="panel">
+              <div key={s.service_id} className="panel service-item">
                 <strong>{s.name}</strong>
-                <div>{s.description}</div>
-                <div>₹{s.price} {s.currency}</div>
-                {/* TODO: Add edit/delete buttons bound to /services */}
+                <div className="small-meta">{s.description}</div>
+                <div className="price-tag">₹{s.price} {s.currency || 'INR'}</div>
               </div>
             ))
           )}
-          {/* TODO: Add create service form bound to POST /services */}
         </CollapsibleSection>
 
-        <CollapsibleSection title="Media">
+        <CollapsibleSection title="Media Gallery">
           {media.length === 0 ? (
-            <p>No media uploaded.</p>
+            <p className="placeholder-text">No media assets found.</p>
           ) : (
             media.map(m => (
-              <div key={m.asset_id} className="panel">
-                <div>{m.media_type}: {m.url}</div>
-                {m.alt_text && <div>{m.alt_text}</div>}
-                {/* TODO: Add delete button bound to /media */}
+              <div key={m.asset_id} className="panel media-item">
+                <div className="meta-label">{m.media_type.toUpperCase()}: {m.url}</div>
+                {m.alt_text && <div className="alt-text-meta">{m.alt_text}</div>}
               </div>
             ))
           )}
-          {/* TODO: Add upload form bound to POST /media */}
         </CollapsibleSection>
 
-        <CollapsibleSection title="Metadata">
-          <p>AI Metadata section (generate/edit via /ai-metadata and /ai-metadata/generate)</p>
-          {/* TODO: Add generate button + list metadata */}
+        {/* Feature Placeholders: Ready for the next phase of development */}
+        <CollapsibleSection title="AI Metadata & SEO">
+          <p className="muted">Generate insights and entities to inform search intent via Gemini AI.</p>
         </CollapsibleSection>
 
-        <CollapsibleSection title="Coupons">
-          <p>Coupons section (manage via /coupons)</p>
-          {/* TODO: Add create/edit/delete forms */}
+        <CollapsibleSection title="Promotional Coupons">
+          <p className="muted">Create and manage exclusive business offers.</p>
         </CollapsibleSection>
 
-        <CollapsibleSection title="Visibility">
-          <p>Visibility checks (run via /visibility/run, list results via /visibility/result)</p>
-          {/* TODO: Add run button + show results */}
+        <CollapsibleSection title="Visibility Audit Results">
+          <p className="muted">Run AI-powered checks to see how your business appears to bots and humans.</p>
         </CollapsibleSection>
 
-        <CollapsibleSection title="JSON-LD Feeds">
-          {business && <JsonBlock title="Generated JSON-LD" data={business} />}
-          {/* TODO: Add generate button + list feeds via /jsonld */}
+        <CollapsibleSection title="Technical JSON-LD Feed">
+          {/* Transparency: Shows the actual data payload used for AI discovery */}
+          {business && <JsonBlock title="Current Schema Payload" data={business} />}
         </CollapsibleSection>
       </div>
     </div>

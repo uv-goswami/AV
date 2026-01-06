@@ -1,0 +1,90 @@
+/* Register Page */
+.register-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem 1rem;
+}
+
+.register-panel {
+  background: #1e1f26;
+  border-radius: 10px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 450px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.register-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+}
+
+.register-sub {
+  font-size: 0.95rem;
+  color: #9fa2a8;
+  text-align: center;
+}
+
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.form-group label {
+  font-size: 0.85rem;
+  color: #d7d9e0;
+}
+
+.form-group input {
+  padding: 0.6rem;
+  border: 1px solid #444;
+  border-radius: 6px;
+  background: #121317;
+  color: #e7e9ee;
+  font-size: 0.95rem;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #32d1a0;
+}
+
+/* Button */
+.btn.full-width {
+  width: 100%;
+}
+
+.register-footer {
+  font-size: 0.85rem;
+  text-align: center;
+  color: #9fa2a8;
+}
+
+.register-footer a {
+  color: #32d1a0;
+  font-weight: 600;
+}
+.register-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .register-panel {
+    padding: 1.5rem;
+    max-width: 100%;
+  }
+}

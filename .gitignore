@@ -1,0 +1,41 @@
+# --- System Files ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Environment & Secrets (CRITICAL) ---
+# Never commit these files as they contain API keys and DB credentials
+.env
+.env.local
+.env.*.local
+*.env
+backend/db/*.db
+backend/db/*.sqlite3
+
+# --- Backend Exclusions (Python/FastAPI) ---
+backend/__pycache__/
+backend/*.py[cod]
+backend/*$py.class
+backend/.pytest_cache/
+backend/venv/
+backend/.venv/
+backend/env/
+backend/build/
+backend/dist/
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# --- Frontend Exclusions (Node/React/Vite) ---
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.cache/
+frontend/.eslintcache
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# --- Docker ---
+.docker/
+*/.docker-cache/

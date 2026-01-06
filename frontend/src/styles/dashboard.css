@@ -1,0 +1,61 @@
+.dashboard-page {
+  display: flex;
+  flex-direction: row;
+  min-height: calc(100vh - 60px); /* account for navbar */
+}
+
+.dashboard-content {
+  flex: 1;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 800px;         /* ✅ limit content width */
+  margin-left: auto;        /* ✅ center content */
+  margin-right: auto;
+}
+
+
+.page-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.page-sub {
+  font-size: 0.95rem;
+  color: #9fa2a8;
+  margin-bottom: 1rem;
+}
+
+/* Responsive: stack sidebar below navbar */
+@media (max-width: 900px) {
+  .dashboard-page {
+    flex-direction: column;
+  }
+}
+
+/* Panels for displaying details */
+.panel {
+  background-color: #1b191ec1;       /* white card background */
+  border: 1px solid #ccc;       /* subtle border */
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 16px;
+  color: #ebe0e0;                  /* default text color */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08); /* soft shadow */
+}
+
+/* Paragraphs inside panels */
+.panel p {
+  color: #fff8f8;                  /* darker text for readability */
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 0.5rem 0;
+}
+
+/* Strong labels inside panels */
+.panel p strong {
+  color: #f6f6f6;                  /* bold labels stay pure black */
+  font-weight: 600;
+}
