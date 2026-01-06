@@ -5,15 +5,23 @@ from typing import List, Optional
 from db.models import ServiceTypeEnum
 
 # -------------------------
-# USERS
+# USERS: Data Transfer Objects
 # -------------------------
 class UserCreate(BaseModel):
+    """
+    Schema for initial user onboarding. 
+    Enforces email formatting and authentication provider requirements.
+    """
     email: EmailStr
     name: Optional[str] = None
     auth_provider: str
     password_hash: Optional[str] = None
 
 class UserOut(BaseModel):
+    """
+    Standardized user response schema.
+    Safely exposes account metadata while excluding sensitive fields like password hashes.
+    """
     user_id: UUID
     email: EmailStr
     name: Optional[str]
@@ -23,21 +31,30 @@ class UserOut(BaseModel):
     is_active: bool
 
     class Config:
+        # Configuration to bridge Pydantic with SQLAlchemy database models
         orm_mode = True
 
 
 # -------------------------
-# AUTH
+# AUTH: Authentication Schemas
 # -------------------------
 class LoginRequest(BaseModel):
+    """
+    Strict validation schema for login attempts. 
+    Uses EmailStr for automated format verification at the entry point.
+    """
     email: EmailStr
     password: str
 
 
 # -------------------------
-# BUSINESS
+# BUSINESS: Profile Management
 # -------------------------
 class BusinessCreate(BaseModel):
+    """
+    Onboarding schema for establishing a business entity.
+    Captures essential profile details and geographical coordinates for local SEO.
+    """
     owner_id: UUID
     name: str
     description: Optional[str] = None
@@ -55,6 +72,10 @@ class BusinessCreate(BaseModel):
     model_config = {"from_attributes": True}
 
 class BusinessOut(BaseModel):
+    """
+    Comprehensive business profile response.
+    Includes system metadata like versioning and audit timestamps.
+    """
     business_id: UUID
     owner_id: UUID
     name: str
@@ -77,9 +98,13 @@ class BusinessOut(BaseModel):
 
 
 # -------------------------
-# COUPONS
+# COUPONS: Promotional Offers
 # -------------------------
 class CouponCreate(BaseModel):
+    """
+    Schema for campaign generation. 
+    Requires specific validity windows to prevent expired data entry.
+    """
     business_id: UUID
     code: str
     description: Optional[str] = None
@@ -90,6 +115,7 @@ class CouponCreate(BaseModel):
     is_active: bool = True
 
 class CouponOut(BaseModel):
+    """Detailed coupon metadata for frontend display and verification."""
     coupon_id: UUID
     business_id: UUID
     code: str
@@ -105,15 +131,17 @@ class CouponOut(BaseModel):
 
 
 # -------------------------
-# MEDIA
+# MEDIA: Asset Management
 # -------------------------
 class MediaCreate(BaseModel):
+    """Captures metadata and file access URLs for business images and videos."""
     business_id: UUID
     media_type: str  # Enum: image, video, document
     url: str
     alt_text: Optional[str] = None
 
 class MediaOut(BaseModel):
+    """Response schema for asset retrieval and display."""
     asset_id: UUID
     business_id: UUID
     media_type: str
@@ -126,9 +154,13 @@ class MediaOut(BaseModel):
 
 
 # -------------------------
-# OPERATIONAL INFO
+# OPERATIONAL INFO: Facility Data
 # -------------------------
 class OperationalInfoCreate(BaseModel):
+    """
+    Schema for facility-specific parameters.
+    Facilitates structured data collection for search engines and accessibility bots.
+    """
     business_id: UUID
     opening_hours: str
     closing_hours: str
@@ -137,10 +169,11 @@ class OperationalInfoCreate(BaseModel):
     reservation_options: Optional[str] = None
     wifi_available: bool = False
     accessibility_features: Optional[str] = None
-    nearby_parking_spot: Optional[str] = None  # fixed typo
+    nearby_parking_spot: Optional[str] = None 
     special_notes: Optional[str] = None
 
 class OperationalInfoOut(BaseModel):
+    """Aggregated operational profile for public and private dashboards."""
     info_id: UUID
     business_id: UUID
     opening_hours: str
@@ -159,9 +192,10 @@ class OperationalInfoOut(BaseModel):
 
 
 # -------------------------
-# SERVICES
+# SERVICES: Offerings & Specializations
 # -------------------------
 class ServiceCreate(BaseModel):
+    """Standardized service registration across various industries."""
     business_id: UUID
     service_type: ServiceTypeEnum
     name: str
@@ -169,6 +203,7 @@ class ServiceCreate(BaseModel):
     price: float
 
 class ServiceOut(BaseModel):
+    """Response payload for business service lists."""
     service_id: UUID
     business_id: UUID
     service_type: str
@@ -181,6 +216,7 @@ class ServiceOut(BaseModel):
         orm_mode = True
 
 class RestaurantServiceFieldsCreate(BaseModel):
+    """Extended parameters for culinary-specific service offerings."""
     service_id: UUID
     cuisine_type: str
     dietary_tags: Optional[str] = None
@@ -188,6 +224,7 @@ class RestaurantServiceFieldsCreate(BaseModel):
     is_vegan: bool = True
 
 class RestaurantServiceFieldsOut(BaseModel):
+    """Serialized culinary extension data."""
     service_id: UUID
     cuisine_type: str
     dietary_tags: Optional[str]
@@ -198,11 +235,13 @@ class RestaurantServiceFieldsOut(BaseModel):
         orm_mode = True
 
 class SalonServiceFieldsCreate(BaseModel):
+    """Extended parameters for beauty and wellness services."""
     service_id: UUID
     stylist_required: bool = False
     gender_specific: str = "male"
 
 class SalonServiceFieldsOut(BaseModel):
+    """Serialized salon extension data."""
     service_id: UUID
     stylist_required: bool
     gender_specific: str
@@ -212,9 +251,10 @@ class SalonServiceFieldsOut(BaseModel):
 
 
 # -------------------------
-# AI METADATA
+# AI METADATA: AI-Driven Insights
 # -------------------------
 class AiMetadataCreate(BaseModel):
+    """Schema for storing results from LLM-based business analysis."""
     business_id: UUID
     extracted_insights: Optional[str] = None
     detected_entities: Optional[str] = None
@@ -222,6 +262,7 @@ class AiMetadataCreate(BaseModel):
     intent_labels: Optional[str] = None
 
 class AiMetadataOut(BaseModel):
+    """Serialized AI metadata for SEO and recommendation engines."""
     ai_metadata_id: UUID
     business_id: UUID
     extracted_insights: Optional[str]
@@ -235,9 +276,10 @@ class AiMetadataOut(BaseModel):
 
 
 # -------------------------
-# JSON-LD FEED
+# JSON-LD FEED: SEO Structured Data
 # -------------------------
 class JsonLDFeedCreate(BaseModel):
+    """Schema for managing Schema.org compliant structured data scripts."""
     business_id: UUID
     schema_type: str
     jsonld_data: str
@@ -245,6 +287,7 @@ class JsonLDFeedCreate(BaseModel):
     validation_errors: Optional[str] = None
 
 class JsonLDFeedOut(BaseModel):
+    """Delivery schema for SEO scripts to bot-readable public pages."""
     feed_id: UUID
     business_id: UUID
     schema_type: str
@@ -258,14 +301,16 @@ class JsonLDFeedOut(BaseModel):
 
 
 # -------------------------
-# VISIBILITY
+# VISIBILITY: Audit Logs & Results
 # -------------------------
 class VisibilityCheckRequestCreate(BaseModel):
+    """Request schema for initiating automated visibility audits."""
     business_id: UUID
     check_type: str
     input_data: Optional[str] = None
 
 class VisibilityCheckRequestOut(BaseModel):
+    """Serialized audit log entry."""
     request_id: UUID
     business_id: UUID
     check_type: str
@@ -276,6 +321,7 @@ class VisibilityCheckRequestOut(BaseModel):
         orm_mode = True
 
 class VisibilityCheckResultCreate(BaseModel):
+    """Schema for persisting audit findings and AI-generated scores."""
     request_id: UUID
     business_id: UUID
     visibility_score: Optional[float] = None
@@ -284,6 +330,7 @@ class VisibilityCheckResultCreate(BaseModel):
     output_snapshot: Optional[str] = None
 
 class VisibilityCheckResultOut(BaseModel):
+    """Response schema for auditing reports and business health dashboards."""
     result_id: UUID
     request_id: UUID
     business_id: UUID
@@ -297,12 +344,14 @@ class VisibilityCheckResultOut(BaseModel):
         orm_mode = True
 
 class VisibilitySuggestionCreate(BaseModel):
+    """Schema for tracking actionable system-generated SEO improvements."""
     business_id: UUID
     suggestion_type: str
     title: str
     status: str = "pending"
 
 class VisibilitySuggestionOut(BaseModel):
+    """Response schema for the business owner's actionable task list."""
     suggestion_id: UUID
     business_id: UUID
     suggestion_type: str
