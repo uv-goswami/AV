@@ -84,7 +84,7 @@ cd AV
 
 ### 2. Backend Setup
 
-** Set Virtual Environment
+** Set Virtual Environment **
 ```bash
 cd backend
 python -m venv venv
